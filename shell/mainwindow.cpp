@@ -158,7 +158,7 @@ void MainWindow::bootOptionsFilter(QString opt) {
 }
 
 void MainWindow::bootOptionsSwitch(int moduleNum, int funcNum){
-
+    qDebug() << "当前函数 :" << __FUNCTION__ << "当前行号 :" << __LINE__;
     QList<FuncInfo> pFuncStructList = FunctionSelect::funcinfoList[moduleNum];
     QString funcStr = pFuncStructList.at(funcNum).namei18nString;
     qDebug() << "moduleNum is" << moduleNum << " " << funcNum << " " << funcStr << endl;
@@ -167,39 +167,22 @@ void MainWindow::bootOptionsSwitch(int moduleNum, int funcNum){
 
     if (pluginsObjMap.keys().contains(funcStr)){
         //开始跳转
-        ui->stackedWidget->setCurrentIndex(1);
-        modulepageWidget->switchPage(pluginsObjMap.value(funcStr));
+        switchPageRequest(pluginsObjMap.value(funcStr));
     }
 }
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
     if (this == watched) {
         if (event->type() == QEvent::WindowStateChange) {
-            int count = ui->leftsidebarVerLayout->count();
+
             if (this->windowState() == Qt::WindowMaximized) {
                 QFont font = this->font();
                 int width = font.pointSize();
                 maxBtn->setIcon(QIcon::fromTheme("window-restore-symbolic"));
-                ui->leftsidebarWidget->setMaximumWidth(width * 10 +25);
-                for (int i = 0; i < count; i++) {
-                    QPushButton * btn = static_cast<QPushButton *>(ui->leftsidebarVerLayout->itemAt(i)->widget());
-                    if (btn) {
-                        QLayout *layout = btn->layout();
-                        QLabel * tipLabel = static_cast<QLabel *>(layout->itemAt(1)->widget());
-                        tipLabel->setVisible(true);
-                    }
-                }
+
             } else {
                 maxBtn->setIcon(QIcon::fromTheme("window-maximize-symbolic"));
-                ui->leftsidebarWidget->setMaximumWidth(60);
-                for (int i = 0; i < count; i++) {
-                    QPushButton * btn = static_cast<QPushButton *>(ui->leftsidebarVerLayout->itemAt(i)->widget());
-                    if (btn) {
-                        QLayout *layout = btn->layout();
-                        QLabel * tipLabel = static_cast<QLabel *>(layout->itemAt(1)->widget());
-                        tipLabel->setVisible(false);
-                    }
-                }
+
             }
         } else if (event->type() == QEvent::MouseButtonDblClick) {
             bool res = dblOnEdge(dynamic_cast<QMouseEvent*>(event));
@@ -245,10 +228,13 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
 }
 
 void MainWindow::initUI() {
+    qDebug() << "当前文件 :" << __FILE__ << "当前函数 :" << __FUNCTION__ << "当前行号 :" << __LINE__;
     ui->setupUi(this);
-    ui->centralWidget->setStyleSheet("QWidget#centralWidget{background: palette(base); border-radius: 6px;}");
 
-    m_ModuleMap = Utils::getModuleHideStatus();
+    //初始化功能列表数据
+    FunctionSelect::initValue();
+
+    ui->centralWidget->setStyleSheet("QWidget#centralWidget{background: palette(base); border-radius: 6px;}");
 
     this->installEventFilter(this);
 
@@ -261,18 +247,17 @@ void MainWindow::initUI() {
             for (auto widget : qApp->allWidgets()) {
                 widget->setFont(font);
             }
-            ui->leftsidebarWidget->setMaximumWidth(width * 10 +20);
         }
     });
 
     initTileBar();
-    m_queryWid->setGeometry(QRect((m_searchWidget->width() - (m_queryIcon->width()+m_queryText->width()+10))/2,0,
-                                        m_queryIcon->width()+m_queryText->width()+10,(m_searchWidget->height()+36)/2));
-    m_queryWid->show();
+//    m_queryWid->setGeometry(QRect((m_searchWidget->width() - (m_queryIcon->width()+m_queryText->width()+10))/2,0,
+//                                        m_queryIcon->width()+m_queryText->width()+10,(m_searchWidget->height()+36)/2));
+//    m_queryWid->show();
+    ui->horizontalLayout_3->addWidget(m_queryWid);
     initStyleSheet();
 
-    //初始化功能列表数据
-    FunctionSelect::initValue();
+
 
     //构建枚举键值转换对象
     kvConverter = new KeyValueConverter(); //继承QObject，No Delete
@@ -294,56 +279,93 @@ void MainWindow::initUI() {
         close();
     });
 
-    //    ui->leftsidebarWidget->setVisible(ui->stackedWidget->currentIndex());
-    connect(ui->stackedWidget, &QStackedWidget::currentChanged, this, [=](int index){
-        //左侧边栏显示/不显示
-        ui->leftsidebarWidget->setVisible(index);
-        //左上角显示字符/返回按钮
-        backBtn->setVisible(index);
-        titleLabel->setHidden(index);
+    ui->scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-        if (index){ //首页部分组件样式
-            //中部内容区域
-            ui->stackedWidget->setStyleSheet("QStackedWidget#stackedWidget{background: palette(base); border-bottom-right-radius: 6px;}");
-        } else { //次页部分组件样式
-            //中部内容区域
-            ui->stackedWidget->setStyleSheet("QStackedWidget#stackedWidget{background:  palette(base); border-bottom-left-radius: 6px; border-bottom-right-radius: 6px;}");
+    //构建枚举键值转换对象
+    mkvConverter = new KeyValueConverter(); //继承QObject，No Delete
+
+    m_ModuleMap = Utils::getModuleHideStatus();
+
+    //设置伸缩策略
+    QSizePolicy leftSizePolicy = ui->leftbarWidget->sizePolicy();
+    QSizePolicy rightSizePolicy = ui->widget->sizePolicy();
+
+    leftSizePolicy.setHorizontalStretch(1);
+    rightSizePolicy.setHorizontalStretch(5);
+
+    ui->leftbarWidget->setSizePolicy(leftSizePolicy);
+    ui->widget->setSizePolicy(rightSizePolicy);
+
+    QListWidget * leftListWidget = new QListWidget;
+    leftListWidget->setObjectName("leftWidget");
+    leftListWidget->setAttribute(Qt::WA_DeleteOnClose);
+    leftListWidget->setResizeMode(QListView::Adjust);
+    leftListWidget->setFocusPolicy(Qt::NoFocus);
+    leftListWidget->setSelectionMode(QAbstractItemView::NoSelection);
+    leftListWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    leftListWidget->setSpacing(12);
+    leftListWidget->setMinimumWidth(172);
+    leftListWidget->setStyleSheet("QListWidget{border: none;background:transparent;}"
+                                  "QListWidget::Item:hover{background:transparent;}");
+
+    for (int moduleIndex = 0; moduleIndex < TOTALMODULES; moduleIndex++){
+
+        QString titleString = mkvConverter->keycodeTokeyi18nstring(moduleIndex);
+        QString titleString_1 ="    "+titleString;
+        // 一级标题item
+        QListWidgetItem * titleItem = new QListWidgetItem();
+        titleItem->setData(Qt::UserRole, "title");
+
+        titleItem->setText(titleString_1);
+
+        titleItem->setFlags((Qt::ItemFlag)0);
+        leftListWidget->addItem(titleItem);
+
+        connect(leftListWidget, SIGNAL(currentItemChanged(QListWidgetItem*,QListWidgetItem*)), this, SLOT(currentLeftitemChanged(QListWidgetItem*,QListWidgetItem*)));
+
+        QMap<QString, QObject *> moduleMap;
+        moduleMap = exportModule(moduleIndex);
+qDebug() << "当前文件 :" << __FILE__ << "当前函数 :" << __FUNCTION__ << "当前行号 :" << __LINE__;
+        QList<FuncInfo> functionStructList = FunctionSelect::funcinfoList[moduleIndex];
+        qDebug() << "当前文件 :" << __FILE__ << "当前函数 :" << __FUNCTION__ << "当前行号 :" << __LINE__;
+        qDebug() << functionStructList.at(0).namei18nString;
+        for (int funcIndex = 0; funcIndex < functionStructList.size(); funcIndex++){
+            FuncInfo single = functionStructList.at(funcIndex);
+            //跳过插件不存在的功能项
+            if (!moduleMap.contains(single.namei18nString))
+                continue;
+
+            //填充左侧二级菜单
+            LeftWidgetItem * leftWidgetItem = new LeftWidgetItem(this);
+            leftWidgetItem->setAttribute(Qt::WA_DeleteOnClose);
+            leftWidgetItem->setLabelText(single.namei18nString);
+
+            leftWidgetItem->setLabelPixmap(QString("://img/secondaryleftmenu/%1.svg").arg(single.nameString), single.nameString, "default");
+
+            QListWidgetItem * item = new QListWidgetItem(leftListWidget);
+            item->setSizeHint(QSize(ui->leftStackedWidget->width() + 48, 40)); //QSize(120, 40) spacing: 12px;
+            leftListWidget->setItemWidget(item, leftWidgetItem);
+            leftListWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+            strItemsMap.insert(single.namei18nString, item);
+
+            CommonInterface * pluginInstance = qobject_cast<CommonInterface *>(moduleMap.value(single.namei18nString));
+
+            pluginInstanceMap.insert(single.namei18nString, pluginInstance);
         }
-    });
+        ui->leftStackedWidget->addWidget(leftListWidget);
 
-    //加载左侧边栏一级菜单
-    initLeftsideBar();
-
-    //加载首页Widget
-    homepageWidget = new HomePageWidget(this);
-    ui->stackedWidget->addWidget(homepageWidget);
-
-    //加载功能页Widget
-    modulepageWidget = new ModulePageWidget(this);
-    ui->stackedWidget->addWidget(modulepageWidget);
-
-    //top left return button
-    connect(backBtn, &QPushButton::clicked, this, [=]{
-        FunctionSelect::popRecordValue();
-
-        //if recordFuncStack is empty, it means there is no history record. So return to homepage
-        if (FunctionSelect::recordFuncStack.length() < 1) {
-            ui->stackedWidget->setCurrentIndex(0);
-        } else {
-            QMap<QString, QObject *> pluginsObjMap = modulesList.at(FunctionSelect::recordFuncStack.last().type);
-            modulepageWidget->switchPage(pluginsObjMap.value(FunctionSelect::recordFuncStack.last().namei18nString), false);
-        }
-    });
+    }
 
     // 快捷参数
     if (QApplication::arguments().length() > 1) {
         bootOptionsFilter(QApplication::arguments().at(1));
     }
+    qDebug() << "当前文件 :" << __FILE__ << "当前函数 :" << __FUNCTION__ << "当前行号 :" << __LINE__;
 }
 
 void MainWindow::initTileBar() {
 
-    ui->titleLayout->setContentsMargins(9, 9, 9, 0);
     m_searchWidget = new SearchWidget(this);
     m_searchWidget->setFocusPolicy(Qt::ClickFocus);
     m_searchWidget->installEventFilter(this);
@@ -375,18 +397,16 @@ void MainWindow::initTileBar() {
     m_searchWidget->setContextMenuPolicy(Qt::NoContextMenu);
     m_animation= new QPropertyAnimation(m_queryWid, "geometry", this);
     m_animation->setDuration(100);
-    ui->titleLayout->addWidget(m_searchWidget,Qt::AlignCenter);
+
     connect(m_animation,&QPropertyAnimation::finished,this,&MainWindow::animationFinishedSlot);
 
     connect(m_searchWidget, &SearchWidget::notifyModuleSearch, this, &MainWindow::switchPage);
 
-    backBtn     = new QPushButton(this);
-    minBtn      = new QPushButton(this);
-    maxBtn      = new QPushButton(this);
-    closeBtn     = new QPushButton(this);
+    minBtn      = ui->minBtn;
+    maxBtn      = ui->maxBtn;
+    closeBtn     = ui->closeBtn;
     titleLabel  = new QLabel(tr("UKCC"), this);
 
-    backBtn->setFixedSize(32, 32);
     minBtn->setFixedSize(32, 32);
     maxBtn->setFixedSize(32, 32);
     titleLabel->setFixedHeight(32);
@@ -397,15 +417,6 @@ void MainWindow::initTileBar() {
     m_searchWidget->setMaximumWidth(350);
     m_searchWidget->setMaximumHeight(40);
 
-    ui->titleLayout->addSpacing(9);
-    ui->titleLayout->addWidget(titleLabel);
-    ui->titleLayout->addWidget(backBtn);
-    ui->titleLayout->addStretch();
-    ui->titleLayout->addWidget(m_searchWidget);
-    ui->titleLayout->addStretch();
-    ui->titleLayout->addWidget(minBtn);
-    ui->titleLayout->addWidget(maxBtn);
-    ui->titleLayout->addWidget(closeBtn);
 }
 void MainWindow::animationFinishedSlot()
 {
@@ -518,70 +529,6 @@ void MainWindow::loadPlugins(){
         }
     }
     m_searchWidget->setLanguage(QLocale::system().name());
-}
-
-void MainWindow::initLeftsideBar(){
-
-    leftBtnGroup = new QButtonGroup();
-    leftMicBtnGroup = new QButtonGroup();
-
-    //构建左侧边栏返回首页按钮
-    QPushButton * hBtn = buildLeftsideBtn("homepage",tr("Home"));
-    hBtn->setObjectName("homepage");
-    connect(hBtn, &QPushButton::clicked, this, [=]{
-        ui->stackedWidget->setCurrentIndex(0);
-    });
-    hBtn->setStyleSheet("QPushButton#homepage{background: palette(button); border: none;}");
-    //    hBtn->setStyleSheet("QPushButton#homepage{background: palette(base);}");
-    ui->leftsidebarVerLayout->addStretch();
-    ui->leftsidebarVerLayout->addWidget(hBtn);
-
-    for(int type = 0; type < TOTALMODULES; type++) {
-        //循环构建左侧边栏一级菜单按钮
-        if (moduleIndexList.contains(type)){
-            QString mnameString = kvConverter->keycodeTokeystring(type);
-            QString mnamei18nString  = kvConverter->keycodeTokeyi18nstring(type); //设置TEXT
-
-            if (m_ModuleMap.keys().contains(mnameString.toLower())) {
-                if (!m_ModuleMap[mnameString.toLower()].toBool()) {
-                    continue;
-                }
-            }
-
-            QPushButton * button;
-            QString btnName = "btn" + QString::number(type + 1);
-            button = buildLeftsideBtn(mnameString,mnamei18nString);
-            button->setToolTip(mnamei18nString);
-
-            button->setObjectName(btnName);
-            button->setCheckable(true);
-            leftBtnGroup->addButton(button, type);
-
-            button->setStyleSheet("QPushButton::checked{background: palette(base); border-top-left-radius: 6px;border-bottom-left-radius: 6px;}"
-                                  "QPushButton::!checked{background: palette(button);border: none;}");
-
-            connect(button, &QPushButton::clicked, this, [=]{
-                QPushButton * btn = dynamic_cast<QPushButton *>(QObject::sender());
-
-                int selectedInt = leftBtnGroup->id(btn);
-
-                //获取一级菜单列表的第一项
-                QList<FuncInfo> tmpList = FunctionSelect::funcinfoList[selectedInt];
-                QMap<QString, QObject *> currentFuncMap = modulesList[selectedInt];
-
-                for (FuncInfo tmpStruct : tmpList){
-                    if (currentFuncMap.keys().contains(tmpStruct.namei18nString)){
-                        modulepageWidget->switchPage(currentFuncMap.value(tmpStruct.namei18nString));
-                        break;
-                    }
-                }
-            });
-
-            ui->leftsidebarVerLayout->addWidget(button);
-        }
-    }
-
-    ui->leftsidebarVerLayout->addStretch();
 }
 
 QPushButton * MainWindow::buildLeftsideBtn(QString bname,QString tipName) {
@@ -698,14 +645,6 @@ void MainWindow::initStyleSheet() {
     this->setWindowIcon(panelicon);
     this->setWindowTitle(tr("ukcc"));
 
-    // 中部内容区域
-    ui->stackedWidget->setStyleSheet("QStackedWidget#stackedWidget{background: palette(base); border-bottom-left-radius: 6px; border-bottom-right-radius: 6px;}");
-
-    // 左上角返回按钮
-    backBtn->setProperty("useIconHighlightEffect", true);
-    backBtn->setProperty("iconHighlightEffectMode", 1);
-    backBtn->setFlat(true);
-
     minBtn->setProperty("useIconHighlightEffect", 0x2);
     minBtn->setProperty("isWindowButton", 0x01);
     minBtn->setFlat(true);
@@ -716,10 +655,6 @@ void MainWindow::initStyleSheet() {
     closeBtn->setProperty("isWindowButton", 0x02);
     closeBtn->setProperty("useIconHighlightEffect", 0x08);
     closeBtn->setFlat(true);
-    ui->leftsidebarWidget->setStyleSheet("QWidget#leftsidebarWidget{background-color: palette(button);border: none; border-top-left-radius: 6px; border-bottom-left-radius: 6px;}");
-
-    // 设置左上角按钮图标
-    backBtn->setIcon(QIcon("://img/titlebar/back.svg"));
 
     // 设置右上角按钮图标
     minBtn->setIcon(QIcon::fromTheme("window-minimize-symbolic"));
@@ -741,8 +676,7 @@ QMap<QString, QObject *> MainWindow::exportModule(int type) {
 }
 
 void MainWindow::functionBtnClicked(QObject *plugin) {
-    ui->stackedWidget->setCurrentIndex(1);
-    modulepageWidget->switchPage(plugin);
+    switchPageRequest(plugin);
 }
 
 void MainWindow::sltMessageReceived(const QString &msg) {
@@ -758,13 +692,87 @@ void MainWindow::sltMessageReceived(const QString &msg) {
 }
 
 void MainWindow::switchPage(QString moduleName) {
-
+    qDebug() << "当前函数 :" << __FUNCTION__ << "当前行号 :" << __LINE__;
     for (int i = 0; i < modulesList.length(); i++) {
         auto modules = modulesList.at(i);
         //开始跳转
         if (modules.keys().contains(moduleName)) {
-            ui->stackedWidget->setCurrentIndex(1);
-            modulepageWidget->switchPage(modules.value(moduleName));
+            switchPageRequest(modules.value(moduleName));
         }
     }
+}
+
+void MainWindow::currentLeftitemChanged(QListWidgetItem *cur, QListWidgetItem *pre){
+    //获取当前QListWidget
+    QListWidget * currentLeftListWidget = dynamic_cast<QListWidget *>(ui->leftStackedWidget->currentWidget());
+
+
+    if (pre != nullptr){
+        LeftWidgetItem * preWidgetItem = dynamic_cast<LeftWidgetItem *>(currentLeftListWidget->itemWidget(pre));
+        //取消高亮
+        preWidgetItem->setSelected(false);
+        preWidgetItem->setLabelTextIsWhite(false);
+        preWidgetItem->isSetLabelPixmapWhite(false);
+    }
+
+    LeftWidgetItem * curWidgetItem = dynamic_cast<LeftWidgetItem *>(currentLeftListWidget->itemWidget(cur));
+    if (pluginInstanceMap.contains(curWidgetItem->text())){
+        CommonInterface * pluginInstance = pluginInstanceMap[curWidgetItem->text()];
+        refreshPluginWidget(pluginInstance);
+        //高亮
+        curWidgetItem->setSelected(true);
+        curWidgetItem->setLabelTextIsWhite(true);
+        curWidgetItem->isSetLabelPixmapWhite(true);
+    } else {
+        qDebug() << "plugin widget not fount!";
+    }
+}
+
+void MainWindow::switchPageRequest(QObject *plugin, bool recorded){
+
+    CommonInterface * pluginInstance = qobject_cast<CommonInterface *>(plugin);
+    QString name; int type;
+    name = pluginInstance->get_plugin_name();
+    type = pluginInstance->get_plugin_type();
+
+    //设置左侧二级菜单
+    ui->leftStackedWidget->setCurrentIndex(type);
+
+
+    QListWidget * lefttmpListWidget = dynamic_cast<QListWidget *>(ui->leftStackedWidget->currentWidget());
+    if (lefttmpListWidget->currentItem() != nullptr){
+        LeftWidgetItem * widget = dynamic_cast<LeftWidgetItem *>(lefttmpListWidget->itemWidget(lefttmpListWidget->currentItem()));
+        //待打开页与QListWidget的CurrentItem相同
+        if (QString::compare(widget->text(), name) == 0){
+            refreshPluginWidget(pluginInstance);
+        }
+    }
+
+    //设置上侧二级菜单
+//    ui->topStackedWidget->setCurrentIndex(type);
+
+    //设置左侧及上侧的当前Item及功能Widget
+    highlightItem(name);
+
+}
+
+void MainWindow::refreshPluginWidget(CommonInterface *plu){
+    ui->scrollArea->takeWidget();
+    delete(ui->scrollArea->widget());
+
+    ui->scrollArea->setWidget(plu->get_plugin_ui());
+
+    //延迟操作
+    plu->plugin_delay_control();
+}
+
+void MainWindow::highlightItem(QString text){
+    QList<QListWidgetItem *> currentItemList = strItemsMap.values(text);
+
+    if (2 > currentItemList.count())
+        return;
+
+    //高亮左侧二级菜单
+    QListWidget * lefttmpListWidget = dynamic_cast<QListWidget *>(ui->leftStackedWidget->currentWidget());
+    lefttmpListWidget->setCurrentItem(currentItemList.at(1)); //QMultiMap 先添加的vlaue在后面
 }

@@ -32,10 +32,8 @@
 #include <QVariantMap>
 
 #include "interface.h"
-#include "homepagewidget.h"
-#include "modulepagewidget.h"
 #include "searchwidget.h"
-
+#include "component/leftwidgetitem.h"
 
 class QLabel;
 class QPushButton;
@@ -68,8 +66,6 @@ private:
     Ui::MainWindow *ui;
 
 private:
-    HomePageWidget * homepageWidget;
-    ModulePageWidget * modulepageWidget;
 
     QButtonGroup * leftBtnGroup;
     QButtonGroup * leftMicBtnGroup; //
@@ -81,7 +77,6 @@ private:
     KeyValueConverter * kvConverter;
     SearchWidget * m_searchWidget;
 
-    QPushButton * backBtn;
     QPushButton * minBtn;
     QPushButton * maxBtn;
     QPushButton * closeBtn;
@@ -96,23 +91,33 @@ private:
     QString           m_searchKeyWords;
     QVariantMap       m_ModuleMap;
 
+    KeyValueConverter * mkvConverter;
+
+    QMap<QString, CommonInterface*> pluginInstanceMap;
+    // 存储功能名与二级菜单item的Map,为了实现高亮
+    QMultiMap<QString, QListWidgetItem*> strItemsMap;
+
 private:
     void initUI();
     void initTileBar();
     void setBtnLayout(QPushButton * &pBtn);
     void loadPlugins();
-    void initLeftsideBar();
     QPushButton * buildLeftsideBtn(QString bname, QString tipName);
     bool isExitsCloudAccount();
 
     bool dblOnEdge(QMouseEvent *event);
     void initStyleSheet();
 
+    void switchPageRequest(QObject * plugin, bool recorded = true);
+    void refreshPluginWidget(CommonInterface * plu);
+    void highlightItem(QString text);
+
 public slots:
     void functionBtnClicked(QObject * plugin);
     void sltMessageReceived(const QString &msg);
     void switchPage(QString moduleName);
     void animationFinishedSlot();
+    void currentLeftitemChanged(QListWidgetItem * cur, QListWidgetItem * pre);
 };
 
 #endif // MAINWINDOW_H

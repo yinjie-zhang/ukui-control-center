@@ -66,8 +66,6 @@ SOURCES += \
     framelessExtended/cursorposcalculator.cpp \
     framelessExtended/framelesshandle.cpp \
     framelessExtended/widgethandlerealize.cpp \
-    homepagewidget.cpp \
-    modulepagewidget.cpp \
     pinyin.cpp \
     prescene.cpp \
     searchwidget.cpp \
@@ -89,8 +87,6 @@ HEADERS += \
     framelessExtended/framelesshandle.h \
     framelessExtended/framelesshandleprivate.h \
     framelessExtended/widgethandlerealize.h \
-    homepagewidget.h \
-    modulepagewidget.h \
     pinyin.h \
     prescene.h \
     searchwidget.h \
@@ -106,9 +102,7 @@ HEADERS += \
     utils/xatom-helper.h
 
 FORMS += \
-    mainwindow.ui \
-    homepagewidget.ui \
-    modulepagewidget.ui
+    mainwindow.ui
 
 RESOURCES += \
     res/resfile.qrc
