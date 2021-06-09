@@ -55,6 +55,7 @@ public:
     void updateUIWhenAdapterChanged();
     void removeDeviceItemUI(QString address);
     void addMyDeviceItemUI(BluezQt::DevicePtr);
+    void MonitorSleepSignal();
 protected:
     void leaveEvent(QEvent *event);
 
@@ -77,6 +78,7 @@ private slots:
     void adapterComboxChanged(int i);
     void adapterNameChanged(const QString &name);
     void adapterDeviceRemove(BluezQt::DevicePtr ptr);
+    void MonitorSleepSlot(bool value);
 private:
     QGSettings *settings = nullptr;
     QString Default_Adapter;
@@ -114,11 +116,13 @@ private:
 
     QLabel *label_2 = nullptr;
     QLabel *loadLabel = nullptr;
+
     QPushButton *discover_refresh;
     QTimer *m_timer = nullptr;
     QTimer *discovering_timer =nullptr;
     int i = 7;
     bool show_flag = false;
+    bool sleep_status = false;
 
     void clearUiShowDeviceList();
     void addOneBluetoothDeviceItemUi(BluezQt::DevicePtr);

@@ -12,6 +12,8 @@ TARGET = ukui-control-center
 DESTDIR = ..
 TEMPLATE = app
 
+QMAKE_CXXFLAGS *= -D_FORTIFY_SOURCE=2 -O2
+
 DEFINES += QT_DEPRECATED_WARNINGS
 
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
@@ -23,6 +25,7 @@ DEFINES += PLUGIN_INSTALL_DIRS='\\"$${PLUGIN_INSTALL_DIRS}\\"'
 
 
 LIBS += -L$$[QT_INSTALL_LIBS] -lX11 -lgsettings-qt -lXi
+LIBS += -L$$[QT_INSTALL_LIBS] -lgsettings-qt -lupower-glib
 
 #LIBS += -L$$[QT_INSTALL_LIBS] -lkylinssoclient
 
